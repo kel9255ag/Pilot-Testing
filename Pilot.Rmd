@@ -1,0 +1,317 @@
+---
+title: "Pilot"
+author: "K. Ager"
+output: html_document
+---
+
+---
+
+Kismet Technologies worked alongside Infection Preventions to determine if NanoRAD would help lower the microbial burden on high touch point areas specifically the patient curtains, chairs, and sharpboxes. 
+
+#### Installation of libraries to run statistical analysis in R Studio.
+
+```{r message = FALSE}
+library(tidyverse)
+library(ggrepel)
+library(ggplot2)
+theme_set(theme_bw())
+library(ggpubr)
+library(dplyr)
+library(flextable)
+library(magrittr)
+set_flextable_defaults(font.family = "Calibri", font.size = 8)
+```
+
+#### Import Dataset for Analysis
+
+Data imported into R Studio. During study, not all areas could be environmentally swabbed due to patient use and were recorded as NA or N/A. NA data points were then taken out of analysis since not numerical data. Baseline was also taken out of analysis since no patients were in hospital and low microbial counts skewed data. Datatable embedded into report as flextable below.
+
+The following report will be presented in segments according to surface, ie. Curtains, Sharpboxes and then Chairs.
+
+## Datatset for Curtains
+
+```{r, warning=FALSE}
+library(readxl)
+CurtainsOH <- read_excel("Curtains2024.xlsx")
+CurtainsOH1<- data.frame(CurtainsOH)
+CurtainsOH2 <- CurtainsOH1 %>%
+  filter(CFU.per.pad!= "NA")
+CurtainsOH2$CFU.per.pad<- as.numeric(CurtainsOH2$CFU.per.pad)
+CurtainsOH3 <- CurtainsOH1 %>%
+  filter(CFU.per.pad!= "NA")
+CurtainsOH3$CFU.per.pad<- as.numeric(CurtainsOH3$CFU.per.pad)
+myft<- flextable(CurtainsOH2)
+myft
+```
+
+#### Plot of Datapoints
+
+Box-plot of Treatment (NanoRAD) to patient curtains in Pre-Op vs. No Treatment (Control) to patient curtains in Pre-Op. 
+
+Box-plot shows Q1 (25%) to Q3 (75%) of dataset range with line representing median datapoint. The upper and lower lines represent Minimum (Q1 - 1.5*1QR) to Maximum (Q3 +1.5*1QR) with x symbols marking outlier in dataset so all data is represented. 
+
+```{r, warning=FALSE}
+Curtainpl1<-ggplot(CurtainsOH2, aes(x= Treatment, y= CFU.per.pad ))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental Sampling on Sigma Media Pad")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("Curtains (July 2023 to Jan 2024)")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+Curtainpl1
+```
+
+#### Histogram
+
+Before Statistical Analysis, parameters for p-value need to be assessed. Histogram shows plot of data points. 
+```{r}
+hist(CurtainsOH2$CFU.per.pad, main = "Histogram of Curtain Datapoints to Jan 2024", xlab = "CFU/Environmental Pad") 
+```
+
+#### Histogram Results
+
+Histogram: not normal distribution/ bell-shaped. CFU/Environmental Pad shows data skewed to the right. Suspected analysis is non-parametric wilcox.test to find p-value. 
+
+To confirm assessment, run shapiro analysis to make sure parameters for t.test is correct. 
+
+#### Shapiro-Wilk Normality Analysis
+
+Shapiro-Wilk test is a statistical test used to assess whether given data follows normal distribution. Null Hypothesis is that the data is normal distribution. Alternative hypothesis is data is not normal. If p-value is less than significance level p=0.05, then data is not normally distributed and will confirm the analysis of a non-parameteric wilcox.test over a normal paired student t.test. 
+
+```{r}
+shapiro.test(CurtainsOH2$CFU.per.pad)
+```
+
+#### Shapiro-Wilk Normality Test Results
+
+p-value is less than 2.2e-16 so confirmed that data is not normally distributed. Will proceed with Wilcoxon Test for non-parametric data since Wilcoxon test does not require normality/ bell-shaped distribution of data points. 
+
+#### For p-value Analysis
+
+Statistical Analysis on Curtains from July 2023 to January 2024 of NanoRad Treatment vs. Control by Wilcoxon paired sample t-test. 
+
+```{r, warning=FALSE}
+Curtainpl1<-ggplot(CurtainsOH2, aes(x= Treatment, y= CFU.per.pad ))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental Sampling on Sigma Media Pad")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("Curtains (July 2023 to Jan 2024)")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+Curtainpl2<- Curtainpl1 + stat_compare_means(method = "wilcox.test", label.y= 400, label.x= 'Control', hjust = -0.7)
+
+Curtainpl2
+```
+
+#### Efficacy of NanoRAD over time
+
+Statistical analysis was conducted of NanoRAD product since application. Most of the data points were conducted at 2 week reapplication which is why more data is available, and therefore, statistical significance can be concluded at 2 week reapplication. However, more research could be conducted into the other time points to find the maximum time frame for reapplication. Statistical Significance was found at 7 weeks since application, but again, further research could be conducted in the future to understand longest residual efficacy of product before reapplication is required. 
+
+```{r, warning=FALSE}
+desired_order5 <- c("Control", "1", "2", "4", "5", "6", "7", "9", "13")
+CurtainsOH3$timeframe..weeks. <- factor(CurtainsOH3$timeframe..weeks., levels = desired_order5)
+
+Curtainpl3<- ggplot (CurtainsOH3, aes(x= timeframe..weeks. , y= CFU.per.pad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(x="Application of NanoRAD (in weeks)")+
+  labs(y="CFU/Environmental Pad")+
+  geom_jitter(aes(color = timeframe..weeks.))+
+  theme(legend.position = "none")+
+  ggtitle("NanoRAD on Curtains 7/2023 to 1/2024")+
+  theme(plot.title = element_text(hjust = .5))
+
+Curtainpl4 <- Curtainpl3 + stat_compare_means(method = "wilcox.test", 
+                                comparisons = list (c("Control","1"), c("Control", "2"), c("Control","4"), c("Control", "5"), c("Control", "6"), c("Control", "7")),
+                                label = "p.format")
+Curtainpl4
+```
+
+#### Conclusion on Curtains
+
+Statistical difference between Control vs. Treatment (NanoRAD)
+
+Kismet Technologies worked alongside Infection Prevention to determine if NanoRAD would help lower the microbial burden on high touch point areas specifically the patient curtains. Based on statistical analysis, there is significant difference on the patient curtains on treated curtains (NanoRAD) in comparison to untreated curtains (control). The significant difference from the pilot study from July 28,2023 to January 2, 2024 was p-value= 0.0041. More study needs to be conducted to truly find the optimal reapplication of NanoRAD,but 2 weeks (which had the most data points) was statistically significant. Due to the pilot results, Kismet Technologies would recommend treatment of NanoRAD on patient curtains to help lower the microbial burden on this high touch point area. 
+
+### Datatset for Sharpboxes
+
+```{r, warning=FALSE}
+library(readxl)
+Sharps2023 <- read_excel("SharpsBoxesDec2023.xlsx")
+Sharps1<- data.frame(Sharps2023)
+Sharps2 <- Sharps1 %>%
+  filter(CFUperEnvironmentalPad!= "NA")
+Sharps2$CFUperEnvironmentalPad<- as.numeric(Sharps2$CFUperEnvironmentalPad)
+Sharps2$Application<- NULL
+mySharps<- flextable(Sharps2)
+mySharps
+```
+
+#### Histogram & Shapiro-Wilk Normality Test
+
+Before Statistical Analysis, parameters for p-value need to be assessed. Histogram shows plot of data points & Shapiro-Wilks test is to assess whether given data follows normal distribution. 
+
+```{r}
+hist(Sharps2$CFUperEnvironmentalPad, main = "Histogram of Sharpbox Datapoints", xlab = "CFU/Environmental Pad") 
+
+shapiro.test(Sharps2$CFUperEnvironmentalPad)
+```
+
+#### Histogram & Shapiro-Wilk Normality Test Results
+
+p-value is less than 2.2e-16 so confirmed that data is not normally distributed. Will proceed with Wilcoxon Test for non-parametric data. 
+
+#### Boxplot of Sharpboxes Control vs. Treatment
+
+Boxplot will display where all the datapoints are positioned, differentiate the outliers and perform Shapiro-Wilks analysis on Control vs. Treatment. 
+
+```{r, warning=FALSE}
+SharpsBoxplot1<-ggplot(Sharps2, aes(x= Treatment, y= CFUperEnvironmentalPad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental pad")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("NanoRAD on Sharp Boxes (July 2023 to Dec 2023)")+
+  theme(plot.title = element_text(hjust = 0.5))
+SharpsBoxplot2 <- SharpsBoxplot1 + stat_compare_means(method = "wilcox.test", label.y= 400, label.x= 'Control', hjust = -0.7)
+SharpsBoxplot2
+```
+
+#### Boxplot of Sharpboxes Control vs. Treatment Results & Conclusion 
+
+Product was applied on Sharpboxes at the beginning of the study and never reapplied. Over the course of the study (July 2023 to Dec 2023), an analysis of the controls vs NanoRAD Treatment was found to be statistically significant at p-value = 0.0028, so  Kismet Technologies would recommend treatment of NanoRAD Treatment on sharpboxes to help lower the microbial burden on the Sharpbox surface.   
+
+## Datatset for Chairs
+
+Two surface types are on Orlando Health chairs. Arms have a hard surface while seats have a softer cushion. NanoRAD was applied to both surfaces but analysis is split depending on surface type. The following data is on the Chair Arms first, then the data proceeds to chair seats. 
+
+```{r, warning=FALSE}
+ChairsYR2023 <- read_excel("ChairsArmsAnalysisDec2023.xlsx", 
+    col_types = c("date", "text", "text", 
+        "text", "numeric"))
+SurfaceArms<-data.frame(ChairsYR2023)
+SurfaceArms1 <- SurfaceArms %>%
+  filter(CFUperEnvironmentalPad!= "NA")
+mySufaceArms<-flextable(SurfaceArms1)
+mySufaceArms
+```
+
+#### Histogram & Shapiro-Wilk Normality Test on Chair Arm
+
+Before Statistical Analysis, parameters for p-value need to be assessed. Histogram shows plot of data points & Shapiro-Wilks test is to assess whether given data follows normal distribution. 
+
+```{r}
+hist(SurfaceArms1$CFUperEnvironmentalPad, main = "Histogram of ChairArms Datapoints", xlab = "CFU/Environmental Pad") 
+shapiro.test(SurfaceArms1$CFUperEnvironmentalPad)
+```
+
+#### Results of Parameters for statistical significance
+
+Data shows that Shapiro-Wilks test would be optimal analysis to confirm non-parametric dataset. Shapiro Wilks Normality Test shows p-value to be less than 2.2e-16 and histogram shows data skewed to the right. Proceed with Wilcoxon Test for non-parametric data.
+
+#### Boxplot of Treated Chair Arms vs. Controls 
+
+```{r}
+Armplot4<-ggplot(SurfaceArms1, aes(x= Type , y= CFUperEnvironmentalPad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental Sampling on Sigma Rapid Aerobic Media Pad")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("Chair Arms (August 2023 to Dec 2023)")+
+  theme(plot.title = element_text(hjust = 0.5))
+Armplot5 <- Armplot4 + stat_compare_means(method = "wilcox.test", 
+                                      comparisons = list (c("Control","Petox"), c("Control", "RayCat")),
+                                      label = "p.format")
+Armplot5
+```
+
+#### Boxplot of Treated Chair Arms vs. Controls Results & Conclusion
+
+Based on the statistical difference, on chair arms NanoRAD Film Spray (internally called Petox) had a p-value= 0.0044 and would be recommended. More research would need to be assessed to understand why NanoRAD Coating (internally called RayCat) did not perform as well on the Arm Chair Surface than the NanoRAD Film Spray so more internal research can be conducted to understand results. 
+
+Chair Arms are just one of two parts of the analysis. Chair Seats were also environmentally sampled. Chair Seats are a porous surface so they were only treated with NanoRAD Film Spray. 
+
+## Datatset for Chair Seats
+
+Two surface types are on chairs. Arms have a hard surface while seats have a softer cushion. NanoRAD was applied to both surfaces but analysis is split depending on surface type. This is the second half of the chair analysis -- Chair Seats.  
+
+```{r, warning=FALSE}
+SeatsYR2023 <- read_excel("SeatsDec2023.xlsx", 
+    col_types = c("date", "text", "text", 
+        "numeric", "date", "text"))
+ChairSeats2023<-data.frame(SeatsYR2023)
+CSeats1 <- ChairSeats2023 %>%
+  filter(CFUperEnvironmentalPad!= "NA") %>%
+  filter(timeframe..weeks.!= "NA") %>%
+  filter(timeframe..weeks.!= "N/A")
+mySurfaceSeats<-flextable(CSeats1)
+mySurfaceSeats
+```
+
+#### Histogram & Shapiro-Wilk Normality Test on Chair Arm
+
+Before Statistical Analysis, parameters for p-value need to be assessed. Histogram shows plot of data points & Shapiro-Wilks test is used to assess whether given data follows normal distribution. 
+
+```{r}
+hist(CSeats1$CFUperEnvironmentalPad, main = "Histogram of ChairSeats Datapoints", xlab = "CFU/Environmental Pad") 
+shapiro.test(CSeats1$CFUperEnvironmentalPad)
+```
+
+#### Results of Parameters for statistical significance
+
+Data shows that Shapiro-Wilks test would be recommended tool for non-parametric dataset. Shapiro Wilks Normality Test shows p-value = 8.825e-12 and histogram shows data skewed to the right. Proceed with Wilcoxon Test for non-parametric data.
+
+#### Boxplot of Treated Chair Seats vs. Controls 
+
+```{r, warning=FALSE}
+CSeatplot7<-ggplot(CSeats1, aes(x= Treatment, y= CFUperEnvironmentalPad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental pad")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("Chair Seats (August 2023 to Dec 2023)")+
+  theme(plot.title = element_text(hjust = 0.5))
+CSeatplot9 <- CSeatplot7 + stat_compare_means(method = "wilcox.test", label.y= 2500, label.x= 'Control', hjust = -0.2)
+
+CSeatplot9
+
+desired_order2 <- c("Control", "1", "2", "3", "4", "5", "6", "7", "10", "11")
+CSeats1$timeframe..weeks. <- factor(CSeats1$timeframe..weeks., levels = desired_order2)
+
+CSeatplot10<- ggplot (CSeats1, aes(x= timeframe..weeks. , y= CFUperEnvironmentalPad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(x="Application of NanoRAD (in weeks)")+
+  labs(y="CFU/Environmental Sampling on Sigma Rapid Aerobic Media Pads")+
+  geom_jitter(aes(color = timeframe..weeks.))+
+  theme(legend.position = "none")+
+  ggtitle("NanoRAD Application on Seats")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+CSeatplot11<- CSeatplot10 + stat_compare_means(method = "wilcox.test", 
+                                      comparisons = list (c("Control","1"), c("Control", "2"), c("Control", "3"), c("Control","4"), c("Control", "5"), c("Control", "6")),
+                                      label = "p.format")
+CSeatplot11
+
+```
+```{r, warning=FALSE}
+CSeats2 <- CSeats1 %>%
+  filter(Location!="Emergency")
+
+CSeatplot12<-ggplot(CSeats2, aes(x= Treatment, y= CFUperEnvironmentalPad))+
+  geom_boxplot(outlier.shape = 4)+
+  labs(y="CFU/Environmental Sampling of Sigma Rapid Aerobic Media Pads")+
+  geom_jitter(aes(color = Treatment))+
+  theme(legend.position = "none")+
+  ggtitle("Chair Seats SWA (August 2023 to Dec 2023)")+
+  theme(plot.title = element_text(hjust = 0.5))
+CSeatplot13 <- CSeatplot12 + stat_compare_means(method = "wilcox.test", label.y= 2500, label.x= 'Control', hjust = -0.2)
+
+CSeatplot13
+```
+
+#### Boxplot of Treated Chair Arms vs. Controls Results & Conclusion
+
+When first running the statistical analysis, no statistical difference could be gleaned with grouping controls vs. Treatments. But NanoRAD FilmSpray did have different application times (weeks), and Kismet Technologies was testing to see how long we could go without spraying to find the optimal application time for Infection Prevention. By waiting to reapply, the statistical difference couldn't be seen by grouping and had to be analyzed by the application time of NanoRAD product. However, the issue with looking at application time is too few data points to help find true statistical difference. But the Boxplot can infer that anything after 6 weeks maybe too long. The other issue from Chair analysis is people were more frequently sitting in the emergency room chairs and it was a higher touchpoint area for the chairs than the surgical waiting area. If emergency room data was filtered out, then p value of treatment can be seen at 0.048, which shows statistically significant of NanoRAD treatment vs control. On areas where higher traffic may rub off NanoRAD treatment, a 2 week application may be optimal.  
+
+Conclusion for Chairs is Kismet Clean Film Spray seems optimal for both aspects of the chairs (arms and seats), and reapplication of the product before 6 weeks would be preferable. During busier times, reapplication of KismetClean on chair surfaces would be 2 weeks. 
